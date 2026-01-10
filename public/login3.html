@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Design 3 (FBI/Hacker Style)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: url('/storage/branding/hero.png') center/cover no-repeat fixed;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Dark overlay with scan lines */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1;
+        }
+
+        /* Scan lines effect */
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Matrix rain effect */
+        .matrix-rain {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            overflow: hidden;
+            opacity: 0.15;
+        }
+
+        .matrix-column {
+            position: absolute;
+            top: -100%;
+            font-size: 14px;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+            animation: matrix-fall linear infinite;
+            writing-mode: vertical-rl;
+            white-space: nowrap;
+        }
+
+        @keyframes matrix-fall {
+            0% {
+                transform: translateY(-100%);
+            }
+            100% {
+                transform: translateY(200vh);
+            }
+        }
+
+        /* Corner decorations */
+        .corner {
+            position: fixed;
+            width: 100px;
+            height: 100px;
+            z-index: 10;
+        }
+
+        .corner-tl { top: 20px; left: 20px; border-top: 2px solid #0f0; border-left: 2px solid #0f0; }
+        .corner-tr { top: 20px; right: 20px; border-top: 2px solid #0f0; border-right: 2px solid #0f0; }
+        .corner-bl { bottom: 20px; left: 20px; border-bottom: 2px solid #0f0; border-left: 2px solid #0f0; }
+        .corner-br { bottom: 20px; right: 20px; border-bottom: 2px solid #0f0; border-right: 2px solid #0f0; }
+
+        /* Status bar */
+        .status-bar {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            gap: 30px;
+            font-size: 11px;
+            color: #0f0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #0f0;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        .status-dot.warning { background: #ff0; animation: blink 0.5s infinite; }
+        .status-dot.danger { background: #f00; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Main container */
+        .login-container {
+            position: relative;
+            z-index: 15;
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+        }
+
+        /* Terminal window */
+        .terminal {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #0f0;
+            border-radius: 0;
+            overflow: hidden;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 0, 0.3),
+                inset 0 0 60px rgba(0, 255, 0, 0.05);
+        }
+
+        /* Terminal header */
+        .terminal-header {
+            background: linear-gradient(90deg, #0a0a0a, #1a1a1a);
+            padding: 12px 16px;
+            border-bottom: 1px solid #0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .terminal-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #0f0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .terminal-title .material-symbols-outlined {
+            font-size: 18px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .terminal-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid;
+        }
+
+        .terminal-btn.close { background: #ff5f56; border-color: #e0443e; }
+        .terminal-btn.minimize { background: #ffbd2e; border-color: #dea123; }
+        .terminal-btn.maximize { background: #27c93f; border-color: #1aab29; }
+
+        /* Terminal body */
+        .terminal-body {
+            padding: 30px;
+        }
+
+        /* ASCII art logo */
+        .ascii-logo {
+            color: #0f0;
+            font-size: 10px;
+            line-height: 1.2;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0f0;
+            white-space: pre;
+        }
+
+        /* Logo image */
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo-container img {
+            height: 40px;
+            filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
+        }
+
+        /* System message */
+        .system-msg {
+            color: #0f0;
+            font-size: 11px;
+            margin-bottom: 25px;
+            padding: 10px;
+            border-left: 2px solid #0f0;
+            background: rgba(0, 255, 0, 0.05);
+        }
+
+        .system-msg .typing {
+            display: inline-block;
+            overflow: hidden;
+            animation: typing 3s steps(50) infinite;
+        }
+
+        @keyframes typing {
+            0%, 100% { width: 0; }
+            50%, 90% { width: 100%; }
+        }
+
+        /* Warning message */
+        .warning-msg {
+            color: #ff0;
+            font-size: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: flash 2s infinite;
+        }
+
+        @keyframes flash {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.5; }
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #0f0;
+            font-size: 11px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .form-group label::before {
+            content: '> ';
+            color: #0f0;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #0f0;
+            color: #0f0;
+            font-size: 14px;
+            font-family: 'Share Tech Mono', monospace;
+            transition: all 0.3s;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(0, 255, 0, 0.4);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        /* Remember & Forgot */
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #0f0;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .remember-me input {
+            width: 14px;
+            height: 14px;
+            accent-color: #0f0;
+        }
+
+        .forgot-link {
+            color: #0f0;
+            font-size: 11px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .forgot-link:hover {
+            text-shadow: 0 0 10px #0f0;
+        }
+
+        /* Submit button */
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            border: 1px solid #0f0;
+            color: #0f0;
+            font-size: 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:hover {
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            text-shadow: 0 0 10px #0f0;
+        }
+
+        /* Access level indicator */
+        .access-level {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px dashed rgba(0, 255, 0, 0.3);
+            text-align: center;
+        }
+
+        .access-level span {
+            color: #0f0;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .access-level .level {
+            color: #ff0;
+            font-weight: bold;
+        }
+
+        /* Register link */
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #0f0;
+            font-size: 11px;
+        }
+
+        .register-link a {
+            color: #0f0;
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        .footer {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            text-align: center;
+            color: #0f0;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Glitch effect */
+        .glitch {
+            animation: glitch 5s infinite;
+        }
+
+        @keyframes glitch {
+            0%, 90%, 100% {
+                transform: translate(0);
+                text-shadow: none;
+            }
+            91% {
+                transform: translate(-2px, 1px);
+                text-shadow: 2px 0 #f00, -2px 0 #0ff;
+            }
+            92% {
+                transform: translate(2px, -1px);
+                text-shadow: -2px 0 #f00, 2px 0 #0ff;
+            }
+            93% {
+                transform: translate(0);
+                text-shadow: none;
+            }
+        }
+
+        /* Loading cursor */
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: #0f0;
+            animation: cursor-blink 1s infinite;
+            margin-left: 2px;
+            vertical-align: middle;
+        }
+
+        @keyframes cursor-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Matrix rain effect -->
+    <div class="matrix-rain" id="matrix"></div>
+
+    <!-- Corner decorations -->
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+        <div class="status-item">
+            <div class="status-dot"></div>
+            <span>System Online</span>
+        </div>
+        <div class="status-item">
+            <div class="status-dot warning"></div>
+            <span>Secure Connection</span>
+        </div>
+        <div class="status-item">
+            <div class="status-dot"></div>
+            <span>Encryption Active</span>
+        </div>
+    </div>
+
+    <div class="login-container">
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-title">
+                    <span class="material-symbols-outlined">security</span>
+                    <span class="glitch">SECURE ACCESS TERMINAL</span>
+                </div>
+                <div class="terminal-controls">
+                    <div class="terminal-btn close"></div>
+                    <div class="terminal-btn minimize"></div>
+                    <div class="terminal-btn maximize"></div>
+                </div>
+            </div>
+
+            <div class="terminal-body">
+                <div class="logo-container">
+                    <img src="/storage/branding/logo.png" alt="Logo">
+                </div>
+
+                <div class="warning-msg">
+                    ⚠ AUTHORIZED PERSONNEL ONLY ⚠
+                </div>
+
+                <div class="system-msg">
+                    <span class="typing">Initializing secure authentication protocol...</span><span class="cursor"></span>
+                </div>
+
+                <form>
+                    <div class="form-group">
+                        <label>User Identification</label>
+                        <div class="input-wrapper">
+                            <input type="email" placeholder="Enter credentials...">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Access Code</label>
+                        <div class="input-wrapper">
+                            <input type="password" placeholder="Enter passphrase...">
+                        </div>
+                    </div>
+
+                    <div class="form-options">
+                        <label class="remember-me">
+                            <input type="checkbox">
+                            Remember terminal
+                        </label>
+                        <a href="#" class="forgot-link">[RESET ACCESS]</a>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 8px;">login</span>
+                        Initialize Access
+                    </button>
+
+                    <div class="access-level">
+                        <span>Required Clearance: <span class="level">LEVEL 5</span></span>
+                    </div>
+
+                    <div class="register-link">
+                        New operative? <a href="#">Request Access</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2026 ORIEN NET SOLUTIONS • CLASSIFIED SYSTEM • ALL ACCESS LOGGED
+    </div>
+
+    <script>
+        // Generate matrix rain
+        const matrixContainer = document.getElementById('matrix');
+        const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        
+        for (let i = 0; i < 30; i++) {
+            const column = document.createElement('div');
+            column.className = 'matrix-column';
+            column.style.left = `${Math.random() * 100}%`;
+            column.style.animationDuration = `${10 + Math.random() * 20}s`;
+            column.style.animationDelay = `${Math.random() * 10}s`;
+            
+            let text = '';
+            for (let j = 0; j < 50; j++) {
+                text += chars[Math.floor(Math.random() * chars.length)] + '\n';
+            }
+            column.textContent = text;
+            
+            matrixContainer.appendChild(column);
+        }
+    </script>
+</body>
+</html>
