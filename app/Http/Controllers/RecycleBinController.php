@@ -128,7 +128,7 @@ class RecycleBinController extends Controller
             }
         }
 
-        ActivityLogService::logEmptyRecycleBin('recycle_bin', $totalDeleted);
+        ActivityLogService::logEmptyRecycleBin($totalDeleted);
 
         return redirect()->back()->with('success', "Recycle bin emptied. {$totalDeleted} items permanently deleted.");
     }
