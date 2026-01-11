@@ -38,8 +38,9 @@
             </div>
         </div>
 
-        <!-- Content -->
-        <div class="border-t border-gray-200 p-6">
+        <!-- Content - Full Width -->
+        <div class="border-t border-gray-200 p-6" style="width: 100%;">
+            <div style="width: 100%;">
                 @if($errors->any())
                 <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded">
                     <ul class="text-xs text-red-800" style="font-family: Poppins, sans-serif;">
@@ -114,6 +115,7 @@
                             style="font-family: monospace;">{{ $var }}</button>
                     @endforeach
                 </div>
+            </div>
             </div>
         </div>
     </div>

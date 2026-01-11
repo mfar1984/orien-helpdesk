@@ -12,7 +12,7 @@
 @section('content')
 <div class="bg-white border border-gray-200">
     <!-- Page Header -->
-    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-200">
+    <div class="ticket-create-header px-6 py-4 flex items-center justify-between border-b border-gray-200">
         <div class="flex items-center gap-3">
             <div style="width: 36px; height: 36px; border-radius: 8px; background-color: #3b82f6; display: flex; align-items: center; justify-content: center;">
                 <span class="material-symbols-outlined" style="font-size: 20px; color: #ffffff;">confirmation_number</span>
@@ -31,7 +31,7 @@
     </div>
 
     <!-- Main Content - 2 Column Layout -->
-    <div style="padding: 24px; display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <div class="ticket-create-content" style="padding: 24px; display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
         <!-- Left Column - Form -->
         <div style="border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff; overflow: hidden;">
             <div style="padding: 14px 16px; background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; display: flex; align-items: center; gap: 10px;">

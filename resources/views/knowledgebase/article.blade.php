@@ -7,9 +7,9 @@
 @endsection
 
 @section('content')
-<div class="flex gap-6">
+<div class="kb-article-container flex gap-6">
     <!-- Main Content -->
-    <div class="flex-1">
+    <div class="kb-article-main flex-1">
         <div class="bg-white border border-gray-200 rounded-lg">
             <!-- Article Header -->
             <div class="px-6 py-5 border-b border-gray-200">
@@ -65,7 +65,7 @@
     </div>
 
     <!-- Sidebar -->
-    <div class="w-72 flex-shrink-0">
+    <div class="kb-article-sidebar w-72 flex-shrink-0">
         <!-- Related Articles -->
         @if($relatedArticles->count() > 0)
         <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">

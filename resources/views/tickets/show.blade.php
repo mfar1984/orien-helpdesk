@@ -49,7 +49,7 @@
 
 <div class="bg-white border border-gray-200">
     <!-- Header -->
-    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-200">
+    <div class="ticket-show-header px-6 py-4 flex items-center justify-between border-b border-gray-200">
         <div class="flex items-center gap-4">
             <div>
                 <h2 class="text-base font-semibold text-gray-900" style="font-family: Poppins, sans-serif;">
@@ -74,7 +74,7 @@
     </div>
     @endif
 
-    <div style="padding: 24px;">
+    <div class="ticket-show-content" style="padding: 24px;">
         <!-- Ticket Information Card -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
             <!-- Requester Info -->
@@ -330,7 +330,7 @@
                     <div style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
                         <h4 style="font-size: 12px; font-weight: 600; color: #374151; font-family: Poppins, sans-serif; margin: 0;">Add Reply</h4>
                     </div>
-                    <form action="{{ route('tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" style="padding: 16px; background-color: #ffffff;">
+                    <form action="{{ route('tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" class="ticket-reply-form" style="padding: 16px; background-color: #ffffff;">
                         @csrf
                         <div style="display: flex; flex-direction: column; gap: 12px;">
                             <textarea name="message" required rows="3"

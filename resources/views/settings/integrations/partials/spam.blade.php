@@ -8,9 +8,9 @@
 <form action="{{ route('settings.integrations.spam.save') }}" method="POST">
     @csrf
     
-    <div class="space-y-6">
+    <div class="spam-integration-content space-y-6">
         <!-- StopForumSpam (FREE - No API Key) -->
-        <div class="border border-gray-200 rounded-lg p-4">
+        <div class="spam-service-card border border-gray-200 rounded-lg p-4">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
@@ -27,7 +27,7 @@
                 </label>
             </div>
             
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="spam-service-grid grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1" style="font-family: Poppins, sans-serif;">Auto-ban Threshold (%)</label>
                     <input type="number" name="stopforumspam_threshold" value="{{ $spamSettings['stopforumspam_threshold'] ?? 90 }}" min="1" max="100"
@@ -55,7 +55,7 @@
         </div>
 
         <!-- AbuseIPDB (FREE - 1000/day) -->
-        <div class="border border-gray-200 rounded-lg p-4">
+        <div class="spam-service-card border border-gray-200 rounded-lg p-4">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -72,7 +72,7 @@
                 </label>
             </div>
             
-            <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="spam-service-grid-3 grid grid-cols-3 gap-4 mb-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1" style="font-family: Poppins, sans-serif;">API Key</label>
                     <input type="password" name="abuseipdb_api_key" value="{{ $spamSettings['abuseipdb_api_key'] ?? '' }}" placeholder="Enter your API key"
@@ -102,7 +102,7 @@
         </div>
 
         <!-- Google Safe Browsing (FREE - 10000/day) -->
-        <div class="border border-gray-200 rounded-lg p-4">
+        <div class="spam-service-card border border-gray-200 rounded-lg p-4">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -119,7 +119,7 @@
                 </label>
             </div>
             
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="spam-service-grid grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1" style="font-family: Poppins, sans-serif;">API Key</label>
                     <input type="password" name="safebrowsing_api_key" value="{{ $spamSettings['safebrowsing_api_key'] ?? '' }}" placeholder="Enter your API key"
@@ -143,7 +143,7 @@
         </div>
 
         <!-- PurgoMalum (FREE - Unlimited) -->
-        <div class="border border-gray-200 rounded-lg p-4">
+        <div class="spam-service-card border border-gray-200 rounded-lg p-4">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -160,7 +160,7 @@
                 </label>
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
+            <div class="spam-service-grid grid grid-cols-2 gap-4">
                 <div class="bg-green-50 border border-green-200 rounded p-3">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-green-600" style="font-size: 16px;">check_circle</span>
@@ -179,7 +179,7 @@
         </div>
 
         <!-- Auto-Check Settings -->
-        <div class="border border-gray-200 rounded-lg p-4">
+        <div class="spam-service-card border border-gray-200 rounded-lg p-4">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                     <span class="material-symbols-outlined text-gray-600" style="font-size: 20px;">settings</span>
@@ -190,7 +190,7 @@
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
+            <div class="spam-autocheck-grid grid grid-cols-2 gap-4">
                 <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
                     <input type="checkbox" name="check_on_registration" value="1" class="w-4 h-4 text-blue-600 rounded" {{ ($spamSettings['check_on_registration'] ?? false) ? 'checked' : '' }}>
                     <div>
@@ -226,7 +226,7 @@
         </div>
 
         <!-- Integration Info -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="spam-info-box bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div class="flex items-start gap-3">
                 <span class="material-symbols-outlined text-blue-600" style="font-size: 20px;">info</span>
                 <div>
@@ -245,7 +245,7 @@
         </div>
 
         <!-- Save Button -->
-        <div class="flex justify-end">
+        <div class="spam-save-button flex justify-end">
             @if($canEdit)
             <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition" style="font-family: Poppins, sans-serif;">
                 <span class="material-symbols-outlined" style="font-size: 16px;">save</span>

@@ -9,9 +9,9 @@
 @endsection
 
 @section('content')
-<div class="bg-white border border-gray-200">
+<div class="bg-white border border-gray-200 tools-container">
     <!-- Page Header -->
-    <div class="px-6 py-4 flex items-center justify-between">
+    <div class="px-6 py-4 flex items-center justify-between tools-page-header">
         <div>
             <h2 class="text-base font-semibold text-gray-900" style="font-family: Poppins, sans-serif;">Tools</h2>
             <p class="text-xs text-gray-500 mt-0.5">Manage email and IP bans, whitelists</p>
@@ -60,7 +60,7 @@
 
     <!-- Tabs Navigation (filtered by permission in controller) -->
     <div class="border-t border-gray-200">
-        <nav class="flex px-6" aria-label="Tabs">
+        <nav class="flex px-6 tools-tabs-nav" aria-label="Tabs">
             @foreach($tabs as $key => $label)
                 <a href="{{ route('tools.index', ['tab' => $key]) }}"
                    class="px-4 py-3 text-xs font-medium border-b-2 {{ $currentTab === $key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
@@ -82,7 +82,7 @@
         @endif
 
         <!-- Filter Form -->
-        <div class="px-6 py-3">
+        <div class="px-6 py-3 tools-filter-form">
             <form action="{{ route('tools.index') }}" method="GET" class="flex items-center gap-2">
                 <input type="hidden" name="tab" value="{{ $currentTab }}">
                 <div class="flex-1">
@@ -103,19 +103,21 @@
                            class="w-full px-3 border border-gray-300 rounded text-xs focus:outline-none focus:border-blue-500"
                            style="font-family: Poppins, sans-serif; min-height: 32px; font-size: 11px;">
                 </div>
-                <button type="submit" class="inline-flex items-center gap-2 px-3 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition" style="min-height: 32px;">
-                    <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
-                    SEARCH
-                </button>
-                <button type="button" onclick="window.location.href='{{ route('tools.index', ['tab' => $currentTab]) }}'" class="inline-flex items-center gap-2 px-3 text-white text-xs font-medium rounded transition" style="min-height: 32px; background-color: #dc2626;">
-                    <span class="material-symbols-outlined" style="font-size: 14px;">refresh</span>
-                    RESET
-                </button>
+                <div class="filter-buttons">
+                    <button type="submit" class="inline-flex items-center gap-2 px-3 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition" style="min-height: 32px;">
+                        <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
+                        SEARCH
+                    </button>
+                    <button type="button" onclick="window.location.href='{{ route('tools.index', ['tab' => $currentTab]) }}'" class="inline-flex items-center gap-2 px-3 text-white text-xs font-medium rounded transition" style="min-height: 32px; background-color: #dc2626;">
+                        <span class="material-symbols-outlined" style="font-size: 14px;">refresh</span>
+                        RESET
+                    </button>
+                </div>
             </form>
         </div>
 
         <!-- Data Table -->
-        <div class="px-6">
+        <div class="px-6 tools-table-container">
             <div class="overflow-x-auto shadow border border-gray-200">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">

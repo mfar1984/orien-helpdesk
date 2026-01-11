@@ -10,9 +10,9 @@
 @endsection
 
 @section('content')
-<div class="bg-white border border-gray-200 rounded-lg">
+<div class="bg-white border border-gray-200 rounded-lg settings-container">
     <!-- Page Header -->
-    <div class="px-6 py-4 flex items-center justify-between">
+    <div class="px-6 py-4 flex items-center justify-between settings-page-header">
         <div>
             <h2 class="text-base font-semibold text-gray-900" style="font-family: Poppins, sans-serif;">Integrations</h2>
             <p class="text-xs text-gray-500 mt-0.5" style="font-family: Poppins, sans-serif;">Manage third-party integrations and API connections</p>
@@ -21,7 +21,7 @@
 
     <!-- Tabs Navigation -->
     <div class="border-t border-gray-200">
-        <nav class="flex px-6" aria-label="Tabs">
+        <nav class="flex px-6 settings-tabs-nav" aria-label="Tabs">
             @php
                 $tabIcons = [
                     'email' => 'mail',
@@ -44,7 +44,7 @@
     </div>
 
     <!-- Tab Content -->
-    <div class="px-6 py-6 border-t border-gray-200">
+    <div class="px-6 py-6 border-t border-gray-200 settings-tab-content">
         @if(session('success'))
             <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs flex items-center gap-2" style="font-family: Poppins, sans-serif;">
                 <span class="material-symbols-outlined" style="font-size: 16px;">check_circle</span>

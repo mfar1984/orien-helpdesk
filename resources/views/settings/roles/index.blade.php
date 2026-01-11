@@ -10,8 +10,8 @@
 @endsection
 
 @section('content')
-<div class="bg-white border border-gray-200">
-    <div class="px-6 py-4 flex items-center justify-between">
+<div class="bg-white border border-gray-200 settings-container">
+    <div class="px-6 py-4 flex items-center justify-between settings-page-header">
         <div>
             <h2 class="text-base font-semibold text-gray-900" style="font-family: Poppins, sans-serif;">Roles & Permissions</h2>
             <p class="text-xs text-gray-500 mt-0.5">Manage user roles and permissions</p>
@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <div class="px-6 py-3 border-t border-gray-200">
+    <div class="px-6 py-3 border-t border-gray-200 settings-filter-form">
         <form action="{{ route('settings.roles') }}" method="GET" class="flex items-center gap-2">
             <div class="flex-1">
                 <input type="text" name="search" value="{{ request('search') }}" 
@@ -41,14 +41,16 @@
                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                 <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
             </select>
-            <button type="submit" class="inline-flex items-center gap-2 px-3 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition" style="min-height: 32px;">
-                <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
-                SEARCH
-            </button>
-            <button type="button" onclick="window.location.href='{{ route('settings.roles') }}'" class="inline-flex items-center gap-2 px-3 text-white text-xs font-medium rounded transition" style="min-height: 32px; background-color: #dc2626;">
-                <span class="material-symbols-outlined" style="font-size: 14px;">refresh</span>
-                RESET
-            </button>
+            <div class="filter-buttons">
+                <button type="submit" class="inline-flex items-center gap-2 px-3 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition" style="min-height: 32px;">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
+                    SEARCH
+                </button>
+                <button type="button" onclick="window.location.href='{{ route('settings.roles') }}'" class="inline-flex items-center gap-2 px-3 text-white text-xs font-medium rounded transition" style="min-height: 32px; background-color: #dc2626;">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">refresh</span>
+                    RESET
+                </button>
+            </div>
         </form>
     </div>
 
@@ -68,7 +70,7 @@
     </div>
     @endif
 
-    <div class="px-6">
+    <div class="px-6 settings-table-container">
         <x-ui.data-table
             :headers="[
                 ['label' => 'Role Name', 'align' => 'text-left'],

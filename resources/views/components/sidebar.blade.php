@@ -135,7 +135,7 @@
 
 <div class="sidebar sidebar-expanded" 
      x-data="{ collapsed: false, openMenus: {} }"
-     :class="{ 'sidebar-collapsed': collapsed, 'sidebar-expanded': !collapsed, 'sidebar-mobile-open': $store.mobileMenu?.open }"
+     :class="{ 'sidebar-collapsed': collapsed, 'sidebar-expanded': !collapsed, 'sidebar-mobile-open': $store.mobileMenu.open }"
      @toggle-sidebar.window="collapsed = !collapsed">
 
     <!-- Sidebar Header -->

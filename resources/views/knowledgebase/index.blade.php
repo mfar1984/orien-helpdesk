@@ -7,9 +7,9 @@
 @endsection
 
 @section('content')
-<div class="flex gap-6">
+<div class="kb-index-container flex gap-6">
     <!-- Sidebar - Categories -->
-    <div class="w-64 flex-shrink-0">
+    <div class="kb-sidebar w-64 flex-shrink-0">
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <!-- Search -->
             <div class="p-3 border-b border-gray-200">
@@ -70,7 +70,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 min-w-0 overflow-hidden">
+    <div class="kb-main-content flex-1 min-w-0 overflow-hidden">
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <!-- Header -->
             <div class="px-6 py-4 border-b border-gray-200 overflow-hidden">

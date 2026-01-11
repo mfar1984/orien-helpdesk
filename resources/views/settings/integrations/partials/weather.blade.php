@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="weather-integration-content space-y-6">
     @php
         $weatherSettings = $settings['weather_settings'] ?? [];
         $isConfigured = !empty($weatherSettings['api_key'] ?? '');
@@ -30,7 +30,7 @@
     @endif
 
     <!-- Status Card -->
-    <div class="bg-gray-50 rounded-lg p-4">
+    <div class="weather-status-card bg-gray-50 rounded-lg p-4">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: #fef9c3;">
@@ -54,7 +54,7 @@
     </div>
 
     <!-- Info Box -->
-    <div class="p-4 rounded-lg" style="background-color: #fefce8; border: 1px solid #fef08a;">
+    <div class="weather-info-box p-4 rounded-lg" style="background-color: #fefce8; border: 1px solid #fef08a;">
         <div class="flex items-start gap-3">
             <span class="material-symbols-outlined" style="font-size: 18px; color: #ca8a04;">info</span>
             <div style="font-family: Poppins, sans-serif;">
@@ -81,7 +81,7 @@
             @endif
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="weather-form-grid grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
                 <label class="block text-gray-700 mb-1.5" style="font-size: 11px; font-family: Poppins, sans-serif; font-weight: 500;">
                     Default City
@@ -105,7 +105,7 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex items-center border-t border-gray-200 pt-5 mt-6" style="gap: 10px;">
+        <div class="weather-action-buttons flex items-center border-t border-gray-200 pt-5 mt-6" style="gap: 10px;">
             @if($canEdit)
             <button type="submit" 
                     class="inline-flex items-center gap-2 px-4 text-white rounded-md hover:opacity-90 transition-all shadow-sm"

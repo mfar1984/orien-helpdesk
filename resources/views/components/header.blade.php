@@ -73,7 +73,7 @@
         <div class="breadcrumb-container">
             <!-- Mobile Menu Button -->
             <button type="button" 
-                    @click="$dispatch('toggle-mobile-menu')"
+                    @click="$store.mobileMenu.toggle()"
                     class="flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 md:hidden"
                     style="min-width: 40px; min-height: 40px;">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

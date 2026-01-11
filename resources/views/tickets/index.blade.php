@@ -11,7 +11,7 @@
 @section('content')
 <div class="bg-white border border-gray-200">
     <!-- Page Header -->
-    <div class="px-6 py-4 flex items-center justify-between">
+    <div class="tickets-page-header px-6 py-4 flex items-center justify-between">
         <div>
             <h2 class="text-base font-semibold text-gray-900" style="font-family: Poppins, sans-serif;">Tickets</h2>
             <p class="text-xs text-gray-500 mt-0.5">Manage and track support tickets</p>
@@ -30,7 +30,7 @@
 
     <!-- Tabs Navigation -->
     <div class="border-t border-gray-200">
-        <nav class="flex px-6" aria-label="Tabs">
+        <nav class="tickets-tabs-nav flex px-6" aria-label="Tabs">
             @foreach($tabs as $key => $label)
                 <a href="{{ route('tickets.index', ['tab' => $key]) }}"
                    class="px-4 py-3 text-xs font-medium border-b-2 {{ $currentTab === $key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
@@ -58,7 +58,7 @@
 
         <!-- Filter Form -->
         <div class="px-6 py-3">
-            <form action="{{ route('tickets.index') }}" method="GET" class="flex items-center gap-2">
+            <form action="{{ route('tickets.index') }}" method="GET" class="tickets-filter-form flex items-center gap-2">
                 <input type="hidden" name="tab" value="{{ $currentTab }}">
                 <div class="flex-1">
                     <input type="text" name="search" value="{{ request('search') }}" 
@@ -78,19 +78,21 @@
                         <option value="{{ $status->id }}" {{ request('status') == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
                     @endforeach
                 </select>
-                <button type="submit" class="inline-flex items-center gap-2 px-3 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition" style="min-height: 32px;">
-                    <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
-                    SEARCH
-                </button>
-                <button type="button" onclick="window.location.href='{{ route('tickets.index', ['tab' => $currentTab]) }}'" class="inline-flex items-center gap-2 px-3 text-white text-xs font-medium rounded transition" style="min-height: 32px; background-color: #dc2626;">
-                    <span class="material-symbols-outlined" style="font-size: 14px;">refresh</span>
-                    RESET
-                </button>
+                <div class="filter-buttons flex items-center gap-2">
+                    <button type="submit" class="inline-flex items-center gap-2 px-3 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition" style="min-height: 32px;">
+                        <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
+                        SEARCH
+                    </button>
+                    <button type="button" onclick="window.location.href='{{ route('tickets.index', ['tab' => $currentTab]) }}'" class="inline-flex items-center gap-2 px-3 text-white text-xs font-medium rounded transition" style="min-height: 32px; background-color: #dc2626;">
+                        <span class="material-symbols-outlined" style="font-size: 14px;">refresh</span>
+                        RESET
+                    </button>
+                </div>
             </form>
         </div>
 
         <!-- Data Table -->
-        <div class="px-6">
+        <div class="tickets-table-container px-6">
             <x-ui.data-table
                 :headers="[
                     ['label' => 'ID', 'align' => 'text-left', 'width' => 'w-28'],
@@ -163,7 +165,7 @@
 
         <!-- Pagination -->
         <div class="px-6 py-3">
-            <div class="flex items-center justify-between">
+            <div class="tickets-pagination flex items-center justify-between">
                 <p class="text-xs text-gray-400" style="font-family: Poppins, sans-serif;">
                     Showing {{ $tickets->firstItem() ?? 0 }} to {{ $tickets->lastItem() ?? 0 }} of {{ $tickets->total() }} tickets
                 </p>
