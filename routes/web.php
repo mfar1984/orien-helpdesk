@@ -108,6 +108,7 @@ Route::middleware(['auth', 'check.user.status', 'session.timeout'])->group(funct
     // Reports
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/print', [ReportController::class, 'print'])->name('reports.print');
     Route::post('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 
     // Tools

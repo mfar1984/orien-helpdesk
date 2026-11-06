@@ -11,6 +11,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -31,13 +32,29 @@ class ReportController extends Controller
         $normalized = $this->normalizeFilters($request, $userRole);
         $viewData = $this->prepareViewData($user, $userRole, $normalized);
 
-        $viewData['accounts'] = $userRole === 'administrator'
-            ? User::query()->orderBy('name')->orderBy('id')->get()
-            : collect();
-        $viewData['statuses'] = TicketStatus::query()->orderBy('name')->orderBy('id')->get();
-        $viewData['priorities'] = TicketPriority::query()->orderBy('name')->orderBy('id')->get();
+        $viewData['startDate'] = $normalized['startAt']->format('Y-m-d');
+        $viewData['startTime'] = $normalized['startAt']->format('H:i');
+        $viewData['endDate'] = $normalized['endAt']->format('Y-m-d');
+        $viewData['endTime'] = $normalized['endAt']->format('H:i');
 
         return view('reports.index', $viewData);
+    }
+
+    /**
+     * Render the printable A4 report document.
+     */
+    public function print(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasPermission('reports.view')) {
+            abort(403, 'You do not have permission to access Reports.');
+        }
+
+        $userRole = $user->role->slug ?? 'customer';
+        $normalized = $this->normalizeFilters($request, $userRole);
+
+        return view('reports.print', $this->prepareViewData($user, $userRole, $normalized));
     }
 
     /**
@@ -145,7 +162,7 @@ class ReportController extends Controller
     }
 
     /**
-     * Build the complete shared data contract for the web and PDF views.
+     * Build the complete shared data contract for the web, print and PDF views.
      */
     private function prepareViewData($user, string $userRole, array $normalized): array
     {
@@ -248,6 +265,7 @@ class ReportController extends Controller
             'resolutionSampleCount' => $resolutionSampleCount,
             'topAgents' => $topAgents,
             'satisfactionRate' => $this->calculateSatisfactionRate($tickets),
+            'trend' => $this->calculateTrend($user, $userRole, $normalized),
             'tickets' => $recentTickets,
             'percentages' => [
                 'total' => $totalTickets > 0 ? 100.0 : 0.0,
@@ -280,6 +298,34 @@ class ReportController extends Controller
     }
 
     /**
+     * Build the seven-day ticket trend with one grouped query.
+     */
+    private function calculateTrend($user, string $userRole, array $normalized): array
+    {
+        $today = Carbon::now(config('app.timezone'))->startOfDay();
+        $rangeStart = $today->copy()->subDays(6);
+        $rangeEnd = $today->copy()->addDay();
+
+        $query = Ticket::query()
+            ->where('tickets.created_at', '>=', $rangeStart)
+            ->where('tickets.created_at', '<', $rangeEnd);
+        $this->applyScopeFilters($query, $user, $userRole, $normalized);
+
+        $counts = $query
+            ->selectRaw('DATE(tickets.created_at) as trend_day, COUNT(*) as trend_count')
+            ->groupBy(DB::raw('DATE(tickets.created_at)'))
+            ->pluck('trend_count', 'trend_day');
+
+        $trend = [];
+        for ($offset = 6; $offset >= 0; $offset--) {
+            $day = $today->copy()->subDays($offset)->toDateString();
+            $trend[] = (int) ($counts[$day] ?? 0);
+        }
+
+        return $trend;
+    }
+
+    /**
      * Apply effective dates, IDs, and role isolation to a ticket query.
      */
     private function applyTicketScope($query, $user, string $userRole, array $normalized): void
@@ -289,6 +335,14 @@ class ReportController extends Controller
             $normalized['endAt'],
         ]);
 
+        $this->applyScopeFilters($query, $user, $userRole, $normalized);
+    }
+
+    /**
+     * Apply role isolation and the status, priority and account filters.
+     */
+    private function applyScopeFilters($query, $user, string $userRole, array $normalized): void
+    {
         if ($userRole === 'customer') {
             $query->where('tickets.created_by', $user->id);
         } elseif ($userRole === 'agent') {
