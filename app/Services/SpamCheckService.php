@@ -47,7 +47,7 @@ class SpamCheckService
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
             if ($httpCode !== 200) {
                 Log::warning('StopForumSpam API failed', ['http_code' => $httpCode]);
@@ -117,7 +117,7 @@ class SpamCheckService
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
             if ($httpCode !== 200) {
                 Log::warning('AbuseIPDB API failed', ['http_code' => $httpCode]);
@@ -176,7 +176,7 @@ class SpamCheckService
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
             if ($httpCode !== 200) {
                 return ['is_spam' => false, 'reason' => null];
@@ -251,7 +251,7 @@ class SpamCheckService
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
             if ($httpCode !== 200) {
                 Log::warning('Safe Browsing API failed', ['http_code' => $httpCode]);
@@ -311,7 +311,7 @@ class SpamCheckService
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
             if ($httpCode !== 200) {
                 Log::warning('PurgoMalum API failed', ['http_code' => $httpCode]);

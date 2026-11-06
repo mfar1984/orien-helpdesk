@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
-use App\Models\TicketReply;
+use App\Models\TicketPriority;
+use App\Models\TicketStatus;
 use App\Models\User;
 use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ReportController extends Controller
 {
@@ -18,51 +22,22 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        
-        // Check permission
+
         if (!$user->hasPermission('reports.view')) {
             abort(403, 'You do not have permission to access Reports.');
         }
-        
+
         $userRole = $user->role->slug ?? 'customer';
-        
-        // Handle datetime-local input (format: 2026-01-01T00:00)
-        $startDatetime = $request->input('start_datetime');
-        $endDatetime = $request->input('end_datetime');
-        
-        if ($startDatetime) {
-            $startDateTime = Carbon::parse($startDatetime);
-            $startDate = $startDateTime->toDateString();
-            $startTime = $startDateTime->format('H:i');
-        } else {
-            $startDate = now()->startOfMonth()->toDateString();
-            $startTime = '00:00';
-        }
-        
-        if ($endDatetime) {
-            $endDateTime = Carbon::parse($endDatetime);
-            $endDate = $endDateTime->toDateString();
-            $endTime = $endDateTime->format('H:i');
-        } else {
-            $endDate = now()->endOfMonth()->toDateString();
-            $endTime = '23:59';
-        }
-        
-        $accountId = $request->input('account_id');
-        $statusId = $request->input('status_id');
-        $priorityId = $request->input('priority_id');
-        
-        // Get filtered data based on role
-        $data = $this->getReportData($user, $userRole, $startDate, $endDate, $startTime, $endTime, $accountId, $statusId, $priorityId);
-        
-        return view('reports.index', [
-            'data' => $data,
-            'userRole' => $userRole,
-            'startDate' => $startDate,
-            'endDate' => $endDate,
-            'startTime' => $startTime,
-            'endTime' => $endTime,
-        ]);
+        $normalized = $this->normalizeFilters($request, $userRole);
+        $viewData = $this->prepareViewData($user, $userRole, $normalized);
+
+        $viewData['accounts'] = $userRole === 'administrator'
+            ? User::query()->orderBy('name')->orderBy('id')->get()
+            : collect();
+        $viewData['statuses'] = TicketStatus::query()->orderBy('name')->orderBy('id')->get();
+        $viewData['priorities'] = TicketPriority::query()->orderBy('name')->orderBy('id')->get();
+
+        return view('reports.index', $viewData);
     }
 
     /**
@@ -71,240 +46,446 @@ class ReportController extends Controller
     public function export(Request $request)
     {
         $user = auth()->user();
-        
-        // Check permission - requires export permission
+
         if (!$user->hasPermission('reports.export')) {
             abort(403, 'You do not have permission to export Reports.');
         }
-        
+
         $userRole = $user->role->slug ?? 'customer';
-        
-        // Handle datetime-local input
-        $startDatetime = $request->input('start_datetime');
-        $endDatetime = $request->input('end_datetime');
-        
-        if ($startDatetime) {
-            $startDateTime = Carbon::parse($startDatetime);
-            $startDate = $startDateTime->toDateString();
-            $startTime = $startDateTime->format('H:i');
-        } else {
-            $startDate = now()->startOfMonth()->toDateString();
-            $startTime = '00:00';
-        }
-        
-        if ($endDatetime) {
-            $endDateTime = Carbon::parse($endDatetime);
-            $endDate = $endDateTime->toDateString();
-            $endTime = $endDateTime->format('H:i');
-        } else {
-            $endDate = now()->endOfMonth()->toDateString();
-            $endTime = '23:59';
-        }
-        
-        $accountId = $request->input('account_id');
-        $statusId = $request->input('status_id');
-        $priorityId = $request->input('priority_id');
-        
-        // Get filtered data
-        $data = $this->getReportData($user, $userRole, $startDate, $endDate, $startTime, $endTime, $accountId, $statusId, $priorityId);
-        
-        // Generate PDF
-        $pdf = Pdf::loadView('reports.pdf', [
-            'data' => $data,
-            'userRole' => $userRole,
-            'user' => $user,
-            'startDate' => $startDate,
-            'endDate' => $endDate,
-            'companyName' => company_name(),
+        $normalized = $this->normalizeFilters($request, $userRole);
+        $viewData = $this->prepareViewData($user, $userRole, $normalized);
+
+        $pdf = Pdf::loadView('reports.pdf', $viewData)->setPaper('a4', 'portrait');
+        $bytes = $pdf->output();
+        $filename = 'report_' . $normalized['startAt']->toDateString()
+            . '_to_' . $normalized['endAt']->toDateString() . '.pdf';
+
+        ActivityLogService::log(
+            'export',
+            'reports',
+            'Report exported: ' . $normalized['startAt']->toDateString()
+                . ' to ' . $normalized['endAt']->toDateString()
+        );
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Length' => (string) strlen($bytes),
         ]);
-        
-        // Set paper size and orientation
-        $pdf->setPaper('a4', 'portrait');
-        
-        // Generate filename
-        $filename = 'report_' . $startDate . '_to_' . $endDate . '.pdf';
-        
-        // Log export activity
-        ActivityLogService::log('export', 'reports', "Report exported: {$startDate} to {$endDate}");
-        
-        return $pdf->download($filename);
     }
 
     /**
-     * Get report data based on user role and date range.
+     * Validate and normalize all report filters in the application timezone.
      */
-    private function getReportData($user, $userRole, $startDate, $endDate, $startTime = '00:00', $endTime = '23:59', $accountId = null, $statusId = null, $priorityId = null)
+    private function normalizeFilters(Request $request, string $userRole): array
     {
-        // Base query with date & time filter
-        $startDateTime = Carbon::parse($startDate . ' ' . $startTime);
-        $endDateTime = Carbon::parse($endDate . ' ' . $endTime);
-        
-        $ticketsQuery = Ticket::whereBetween('created_at', [
-            $startDateTime,
-            $endDateTime,
-        ]);
+        $rules = [
+            'start_datetime' => ['nullable', 'string', 'size:16', 'date_format:Y-m-d\TH:i'],
+            'end_datetime' => ['nullable', 'string', 'size:16', 'date_format:Y-m-d\TH:i'],
+            'status_id' => [
+                'nullable',
+                'integer',
+                'min:1',
+                Rule::exists('ticket_statuses', 'id')->whereNull('deleted_at'),
+            ],
+            'priority_id' => [
+                'nullable',
+                'integer',
+                'min:1',
+                Rule::exists('ticket_priorities', 'id')->whereNull('deleted_at'),
+            ],
+        ];
 
-        // Apply role-based filtering (DATA ISOLATION)
-        if ($userRole === 'customer') {
-            // Customer: Only their own tickets
-            $ticketsQuery->where('created_by', $user->id);
-        } elseif ($userRole === 'agent') {
-            // Agent: Only assigned tickets
-            $ticketsQuery->whereHas('assignees', function ($q) use ($user) {
-                $q->where('users.id', $user->id);
-            });
-        } elseif ($userRole === 'administrator' && $accountId) {
-            // Administrator with account filter
-            $ticketsQuery->where('created_by', $accountId);
-        }
-        // Administrator without filter: See all
-
-        // Apply status filter
-        if ($statusId) {
-            $ticketsQuery->where('status_id', $statusId);
+        if ($userRole === 'administrator') {
+            $rules['account_id'] = [
+                'nullable',
+                'integer',
+                'min:1',
+                Rule::exists('users', 'id')->whereNull('deleted_at'),
+            ];
         }
 
-        // Apply priority filter
-        if ($priorityId) {
-            $ticketsQuery->where('priority_id', $priorityId);
+        $validated = $request->validate($rules);
+        $timezone = config('app.timezone');
+        $now = Carbon::now($timezone);
+        $startAt = !empty($validated['start_datetime'])
+            ? Carbon::createFromFormat('Y-m-d\TH:i', $validated['start_datetime'], $timezone)
+                ->setSecond(0)
+                ->setMicrosecond(0)
+            : $now->copy()->startOfMonth()->startOfDay();
+        $endAt = !empty($validated['end_datetime'])
+            ? Carbon::createFromFormat('Y-m-d\TH:i', $validated['end_datetime'], $timezone)
+                ->endOfMinute()
+            : $now->copy()->endOfMonth()->endOfDay();
+
+        if ($endAt->lt($startAt)) {
+            throw ValidationException::withMessages([
+                'end_datetime' => 'The end date and time must be after or equal to the start date and time.',
+            ]);
         }
 
-        // Get tickets
-        $tickets = $ticketsQuery->with(['creator', 'category', 'priority', 'status', 'assignees'])->get();
+        $accountId = $userRole === 'administrator' && !empty($validated['account_id'])
+            ? (int) $validated['account_id']
+            : null;
+        $statusId = !empty($validated['status_id']) ? (int) $validated['status_id'] : null;
+        $priorityId = !empty($validated['priority_id']) ? (int) $validated['priority_id'] : null;
 
-        // Calculate statistics
+        return [
+            'startAt' => $startAt,
+            'endAt' => $endAt,
+            'startDatetime' => $startAt->format('Y-m-d\TH:i'),
+            'endDatetime' => $endAt->format('Y-m-d\TH:i'),
+            'accountId' => $accountId,
+            'statusId' => $statusId,
+            'priorityId' => $priorityId,
+            'account' => $accountId ? User::find($accountId) : null,
+            'status' => $statusId ? TicketStatus::find($statusId) : null,
+            'priority' => $priorityId ? TicketPriority::find($priorityId) : null,
+        ];
+    }
+
+    /**
+     * Build the complete shared data contract for the web and PDF views.
+     */
+    private function prepareViewData($user, string $userRole, array $normalized): array
+    {
+        $generatedAt = Carbon::now(config('app.timezone'));
+        $data = $this->getReportData($user, $userRole, $normalized);
+        $generatorName = $this->fallbackLabel($user->name, 'Unknown user');
+        $roleName = $this->fallbackLabel($user->role?->name, ucfirst($userRole));
+        $scope = $this->scopeLabel($user, $userRole, $normalized, $generatorName);
+        $accountLabel = $normalized['accountId']
+            ? $this->fallbackLabel($normalized['account']?->name, 'Unknown account')
+            : 'All accounts';
+
+        return [
+            'data' => $data,
+            'user' => $user,
+            'userRole' => $userRole,
+            'normalized' => $normalized,
+            'canExport' => $user->hasPermission('reports.export'),
+            'metadata' => [
+                'companyName' => $this->fallbackLabel(company_name(), 'ORIEN Helpdesk'),
+                'generatedDateTime' => $generatedAt->format('M d, Y · H:i'),
+                'generatedMonth' => $generatedAt->format('F Y'),
+                'generatedYear' => $generatedAt->format('Y'),
+                'generatorName' => $generatorName,
+                'roleName' => $roleName,
+                'scope' => $scope,
+                'timezone' => config('app.timezone'),
+            ],
+            'filters' => [
+                'period' => $normalized['startAt']->format('M d, Y H:i')
+                    . ' – ' . $normalized['endAt']->format('M d, Y H:i')
+                    . ' (' . config('app.timezone') . ')',
+                'scope' => $scope,
+                'status' => $normalized['statusId']
+                    ? $this->fallbackLabel($normalized['status']?->name, 'Unknown status')
+                    : 'All statuses',
+                'priority' => $normalized['priorityId']
+                    ? $this->fallbackLabel($normalized['priority']?->name, 'Unknown priority')
+                    : 'All priorities',
+                'account' => $accountLabel,
+            ],
+        ];
+    }
+
+    /**
+     * Get report data from one role-aware, filtered ticket collection.
+     */
+    private function getReportData($user, string $userRole, array $normalized): array
+    {
+        $ticketsQuery = Ticket::query();
+        $this->applyTicketScope($ticketsQuery, $user, $userRole, $normalized);
+
+        $tickets = $ticketsQuery
+            ->with([
+                'category',
+                'priority',
+                'status',
+            ])
+            ->withMin('replies as first_reply_at', 'created_at')
+            ->orderByDesc('tickets.created_at')
+            ->orderByDesc('tickets.id')
+            ->get();
+
         $totalTickets = $tickets->count();
-        $openTickets = $tickets->where('status.slug', 'open')->count();
-        $closedTickets = $tickets->where('status.slug', 'closed')->count();
-        $inProgressTickets = $tickets->where('status.slug', 'in-progress')->count();
-        
-        // Get tickets by priority
-        $ticketsByPriority = $tickets->groupBy('priority.name')->map->count();
-        
-        // Get tickets by category
-        $ticketsByCategory = $tickets->groupBy('category.name')->map->count();
-        
-        // Get tickets by status
-        $ticketsByStatus = $tickets->groupBy('status.name')->map->count();
-        
-        // Calculate response times
-        $avgResponseTime = $this->calculateAvgResponseTime($tickets);
-        $avgResolutionTime = $this->calculateAvgResolutionTime($tickets);
-        
-        // Get top performing agents (Admin/Agent only)
-        $topAgents = [];
-        if (in_array($userRole, ['administrator', 'agent'])) {
-            $topAgents = $this->getTopAgents($startDate, $endDate, $userRole, $user);
-        }
-        
-        // Customer satisfaction (if applicable)
-        $satisfactionRate = $this->calculateSatisfactionRate($tickets);
+        $openTickets = $tickets->filter(fn ($ticket) => $ticket->status?->slug === 'open')->count();
+        $closedTickets = $tickets->filter(fn ($ticket) => $ticket->status?->slug === 'closed')->count();
+        $inProgressTickets = $tickets->filter(fn ($ticket) => $ticket->status?->slug === 'in-progress')->count();
+        $priorityDistribution = $this->prepareDistribution($tickets, 'priority', 'Unspecified priority');
+        $categoryDistribution = $this->prepareDistribution($tickets, 'category', 'Uncategorized');
+        $statusDistribution = $this->prepareDistribution($tickets, 'status', 'Unspecified status');
+        [$avgResponseTime, $responseSampleCount] = $this->calculateAvgResponseTime($tickets);
+        [$avgResolutionTime, $resolutionSampleCount] = $this->calculateAvgResolutionTime($tickets);
+        $topAgents = in_array($userRole, ['administrator', 'agent'], true)
+            ? $this->getTopAgents($user, $userRole, $normalized)
+            : collect();
+        $recentTickets = $tickets->take(10)->values();
 
-        // Get trend data (last 7 days)
-        $trend = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i)->toDateString();
-            $count = Ticket::whereDate('created_at', $date);
-            
-            // Apply same role-based filtering for trend
-            if ($userRole === 'customer') {
-                $count->where('created_by', $user->id);
-            } elseif ($userRole === 'agent') {
-                $count->whereHas('assignees', function ($q) use ($user) {
-                    $q->where('users.id', $user->id);
-                });
-            }
-            
-            $trend[] = $count->count();
-        }
+        $topAgents->each(function ($agent) use ($topAgents) {
+            $name = $this->fallbackLabel($agent->name, 'Unknown agent');
+            $maxCount = (int) $topAgents->max('tickets_count');
+            $agent->setAttribute('display_name', $name);
+            $agent->setAttribute('initials', $this->initials($name));
+            $agent->setAttribute('role_label', $this->fallbackLabel($agent->role?->name, 'Support Agent'));
+            $agent->setAttribute('count_percentage', $maxCount > 0
+                ? $this->percentage((int) $agent->tickets_count, $maxCount)
+                : 0.0);
+        });
 
         return [
             'totalTickets' => $totalTickets,
             'openTickets' => $openTickets,
             'closedTickets' => $closedTickets,
             'inProgressTickets' => $inProgressTickets,
-            'ticketsByPriority' => $ticketsByPriority,
-            'ticketsByCategory' => $ticketsByCategory,
-            'ticketsByStatus' => $ticketsByStatus,
+            'ticketsByPriority' => collect($priorityDistribution)->pluck('count', 'label'),
+            'ticketsByCategory' => collect($categoryDistribution)->pluck('count', 'label'),
+            'ticketsByStatus' => collect($statusDistribution)->pluck('count', 'label'),
             'avgResponseTime' => $avgResponseTime,
             'avgResolutionTime' => $avgResolutionTime,
+            'responseSampleCount' => $responseSampleCount,
+            'resolutionSampleCount' => $resolutionSampleCount,
             'topAgents' => $topAgents,
-            'satisfactionRate' => $satisfactionRate,
-            'trend' => $trend,
-            'tickets' => $tickets->take(10), // Recent 10 tickets for display
+            'satisfactionRate' => $this->calculateSatisfactionRate($tickets),
+            'tickets' => $recentTickets,
+            'percentages' => [
+                'total' => $totalTickets > 0 ? 100.0 : 0.0,
+                'closed' => $this->percentage($closedTickets, $totalTickets),
+                'open' => $this->percentage($openTickets, $totalTickets),
+                'inProgress' => $this->percentage($inProgressTickets, $totalTickets),
+            ],
+            'priorityDistribution' => $priorityDistribution,
+            'categoryDistribution' => $categoryDistribution,
+            'statusDistribution' => $statusDistribution,
+            'observation' => $this->prepareObservation(
+                $totalTickets,
+                $statusDistribution,
+                $categoryDistribution
+            ),
+            'recentTickets' => $recentTickets->map(function ($ticket) {
+                return [
+                    'id' => (int) $ticket->id,
+                    'subject' => $this->fallbackLabel($ticket->subject, 'No subject'),
+                    'category' => $this->fallbackLabel($ticket->category?->name, 'Uncategorized'),
+                    'priority' => $this->fallbackLabel($ticket->priority?->name, 'Unspecified priority'),
+                    'status' => $this->fallbackLabel($ticket->status?->name, 'Unspecified status'),
+                    'createdDate' => $ticket->created_at
+                        ->copy()
+                        ->timezone(config('app.timezone'))
+                        ->format('M d, Y'),
+                ];
+            }),
         ];
     }
 
     /**
-     * Calculate average response time.
+     * Apply effective dates, IDs, and role isolation to a ticket query.
      */
-    private function calculateAvgResponseTime($tickets)
+    private function applyTicketScope($query, $user, string $userRole, array $normalized): void
     {
-        $totalMinutes = 0;
-        $count = 0;
+        $query->whereBetween('tickets.created_at', [
+            $normalized['startAt'],
+            $normalized['endAt'],
+        ]);
+
+        if ($userRole === 'customer') {
+            $query->where('tickets.created_by', $user->id);
+        } elseif ($userRole === 'agent') {
+            $query->whereHas('assignees', function ($assigneeQuery) use ($user) {
+                $assigneeQuery->where('users.id', $user->id);
+            });
+        } elseif ($userRole === 'administrator' && $normalized['accountId']) {
+            $query->where('tickets.created_by', $normalized['accountId']);
+        }
+
+        if ($normalized['statusId']) {
+            $query->where('tickets.status_id', $normalized['statusId']);
+        }
+
+        if ($normalized['priorityId']) {
+            $query->where('tickets.priority_id', $normalized['priorityId']);
+        }
+    }
+
+    /**
+     * Prepare a stable, relationship-safe distribution.
+     */
+    private function prepareDistribution(Collection $tickets, string $relationship, string $fallback): array
+    {
+        $counts = [];
 
         foreach ($tickets as $ticket) {
-            $firstReply = $ticket->replies()->where('user_id', '!=', $ticket->user_id)->first();
-            if ($firstReply) {
-                $diff = $ticket->created_at->diffInMinutes($firstReply->created_at);
-                $totalMinutes += $diff;
-                $count++;
+            $label = $this->fallbackLabel($ticket->{$relationship}?->name, $fallback);
+            $counts[$label] = ($counts[$label] ?? 0) + 1;
+        }
+
+        $total = $tickets->count();
+        $items = [];
+        foreach ($counts as $label => $count) {
+            $items[] = [
+                'label' => $label,
+                'count' => (int) $count,
+                'percentage' => $this->percentage((int) $count, $total),
+            ];
+        }
+
+        usort($items, function ($left, $right) {
+            return $right['count'] <=> $left['count'] ?: strcmp($left['label'], $right['label']);
+        });
+
+        return $items;
+    }
+
+    /**
+     * Calculate average time to the first persisted reply.
+     */
+    private function calculateAvgResponseTime(Collection $tickets): array
+    {
+        $minutes = [];
+
+        foreach ($tickets as $ticket) {
+            if (empty($ticket->first_reply_at)) {
+                continue;
             }
+
+            $firstReplyAt = Carbon::parse($ticket->first_reply_at);
+            if ($firstReplyAt->lt($ticket->created_at)) {
+                continue;
+            }
+
+            $minutes[] = $ticket->created_at->diffInMinutes($firstReplyAt);
         }
 
-        return $count > 0 ? round($totalMinutes / $count / 60, 1) : 0; // Convert to hours
+        return [
+            count($minutes) > 0 ? round(array_sum($minutes) / count($minutes) / 60, 1) : 0.0,
+            count($minutes),
+        ];
     }
 
     /**
-     * Calculate average resolution time.
+     * Calculate average creation-to-last-update time for closed tickets.
      */
-    private function calculateAvgResolutionTime($tickets)
+    private function calculateAvgResolutionTime(Collection $tickets): array
     {
-        $closedTickets = $tickets->filter(function ($ticket) {
-            return $ticket->status && $ticket->status->slug === 'closed';
-        });
+        $minutes = $tickets
+            ->filter(fn ($ticket) => $ticket->status?->slug === 'closed')
+            ->filter(fn ($ticket) => $ticket->updated_at->gte($ticket->created_at))
+            ->map(fn ($ticket) => $ticket->created_at->diffInMinutes($ticket->updated_at));
 
-        if ($closedTickets->isEmpty()) {
-            return 0;
+        if ($minutes->isEmpty()) {
+            return [0.0, 0];
         }
 
-        $totalHours = $closedTickets->sum(function ($ticket) {
-            return $ticket->created_at->diffInHours($ticket->updated_at);
-        });
-
-        return round($totalHours / $closedTickets->count(), 1);
+        return [round($minutes->average() / 60, 1), $minutes->count()];
     }
 
     /**
-     * Get top performing agents.
+     * Get eligible agents with counts from the same effective ticket scope.
      */
-    private function getTopAgents($startDate, $endDate, $userRole, $user)
+    private function getTopAgents($user, string $userRole, array $normalized): Collection
     {
-        $query = User::whereHas('role', function ($q) {
-            $q->where('slug', 'agent');
-        })->withCount(['assignedTickets as tickets_count' => function ($q) use ($startDate, $endDate) {
-            $q->whereBetween('tickets.created_at', [
-                Carbon::parse($startDate)->startOfDay(),
-                Carbon::parse($endDate)->endOfDay(),
-            ]);
-        }]);
+        $query = User::query()
+            ->whereHas('role', function ($roleQuery) {
+                $roleQuery->where('slug', 'agent');
+            })
+            ->with('role')
+            ->withCount(['assignedTickets as tickets_count' => function ($ticketQuery) use ($user, $userRole, $normalized) {
+                $this->applyTicketScope($ticketQuery, $user, $userRole, $normalized);
+            }]);
 
-        // If agent, only show themselves
         if ($userRole === 'agent') {
-            $query->where('id', $user->id);
+            $query->where('users.id', $user->id);
         }
 
-        return $query->orderByDesc('tickets_count')
-            ->take(5)
+        return $query
+            ->orderByDesc('tickets_count')
+            ->orderBy('name')
+            ->orderBy('users.id')
+            ->limit(5)
             ->get();
+    }
+
+    private function prepareObservation(int $total, array $statuses, array $categories): array
+    {
+        if ($total === 0) {
+            return [
+                'headline' => 'No tickets match the selected period and filters.',
+                'support' => 'Adjust the effective filters to review another part of the support workload.',
+            ];
+        }
+
+        $status = $statuses[0] ?? null;
+        $category = $categories[0] ?? null;
+        $headline = $status
+            ? number_format($status['count']) . ' ' . $this->ticketWord($status['count'])
+                . ($status['count'] === 1 ? ' is ' : ' are ') . $status['label'] . ' (' . number_format($status['percentage'], 1) . '%).'
+            : number_format($total) . ' ' . $this->ticketWord($total) . ' were recorded.';
+        $support = $category
+            ? $category['label'] . ' accounts for ' . number_format($category['count']) . ' '
+                . $this->ticketWord($category['count']) . ' ('
+                . number_format($category['percentage'], 1) . '%) in the selected period.'
+            : 'No category distribution is available for the selected period.';
+
+        return ['headline' => $headline, 'support' => $support];
+    }
+
+    private function scopeLabel($user, string $userRole, array $normalized, string $generatorName): string
+    {
+        if ($userRole === 'customer') {
+            return 'Personal tickets only';
+        }
+
+        if ($userRole === 'agent') {
+            return 'Tickets assigned to ' . $generatorName;
+        }
+
+        if ($userRole === 'administrator' && $normalized['accountId']) {
+            return 'Tickets created by '
+                . $this->fallbackLabel($normalized['account']?->name, 'Unknown account');
+        }
+
+        return 'All system tickets';
+    }
+
+    private function fallbackLabel($value, string $fallback): string
+    {
+        $label = trim((string) ($value ?? ''));
+
+        return $label !== '' ? $label : $fallback;
+    }
+
+    private function initials(string $name): string
+    {
+        $parts = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $initials = '';
+
+        foreach (array_slice($parts, 0, 2) as $part) {
+            $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+        }
+
+        return $initials !== '' ? $initials : '?';
+    }
+
+    private function percentage(int $count, int $total): float
+    {
+        if ($total <= 0) {
+            return 0.0;
+        }
+
+        return min(100.0, max(0.0, round($count / $total * 100, 1)));
+    }
+
+    private function ticketWord(int $count): string
+    {
+        return $count === 1 ? 'ticket' : 'tickets';
     }
 
     /**
      * Calculate satisfaction rate (placeholder).
      */
-    private function calculateSatisfactionRate($tickets)
+    private function calculateSatisfactionRate(Collection $tickets)
     {
-        // This is a placeholder - implement based on your rating system
         return 0;
     }
 }

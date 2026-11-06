@@ -12,12 +12,18 @@ class ActivityLogService
      */
     private static function notifyTelegram(string $action, string $module, string $description, ?array $context = null): void
     {
-        // Send to Telegram asynchronously (non-blocking)
+        // This runs inline, so the request waits for it. TelegramService keeps
+        // the timeouts short and stops trying for a while after a transport
+        // failure, which is what keeps that wait from adding up.
         try {
             TelegramService::sendActivityNotification($action, $module, $description, $context);
-        } catch (\Exception $e) {
-            // Silently fail - don't break the main flow
-            \Log::debug('Telegram notification failed: ' . $e->getMessage());
+        } catch (\Throwable $exception) {
+            // Never let a notification problem break the action being logged,
+            // and never include request details in notification failure logs.
+            \Log::warning('Telegram activity notification failed', [
+                'exception' => $exception::class,
+                'code' => $exception->getCode(),
+            ]);
         }
     }
 
@@ -362,16 +368,25 @@ class ActivityLogService
             $ticket
         );
         
-        // Send detailed ticket notification
-        TelegramService::sendTicketNotification('replied', [
-            'ticket_number' => $ticket->ticket_number,
-            'subject' => $ticket->subject,
-            'status' => $ticket->status->name ?? 'Unknown',
-            'priority' => $ticket->priority->name ?? 'Unknown',
-            'message' => $replyContent,
-            'user_name' => auth()->user()->name ?? 'Unknown',
-            'url' => route('tickets.show', $ticket->id),
-        ]);
+        // Send detailed ticket notification without allowing a notification
+        // failure to break the ticket reply that was already recorded.
+        try {
+            TelegramService::sendTicketNotification('replied', [
+                'ticket_number' => $ticket->ticket_number,
+                'subject' => $ticket->subject,
+                'status' => $ticket->status->name ?? 'Unknown',
+                'priority' => $ticket->priority->name ?? 'Unknown',
+                'message' => $replyContent,
+                'user_name' => auth()->user()->name ?? 'Unknown',
+                'url' => route('tickets.show', $ticket->id),
+            ]);
+        } catch (\Throwable $exception) {
+            // Avoid exception details because request data may contain secrets.
+            \Log::warning('Telegram ticket reply notification failed', [
+                'exception' => $exception::class,
+                'code' => $exception->getCode(),
+            ]);
+        }
     }
 
     /**

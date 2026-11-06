@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Models\WhitelistEmail;
 use App\Models\WhitelistIp;
 use App\Services\ActivityLogService;
+use App\Services\TelegramService;
 use Illuminate\Http\Request;
 
 class IntegrationController extends Controller
@@ -394,7 +395,7 @@ class IntegrationController extends Controller
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
         if ($httpCode !== 200) {
             return ['success' => false, 'message' => 'Failed to connect to StopForumSpam API'];
@@ -448,7 +449,7 @@ class IntegrationController extends Controller
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
         if ($httpCode !== 200) {
             $error = json_decode($response, true);
@@ -518,7 +519,7 @@ class IntegrationController extends Controller
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
         if ($httpCode !== 200) {
             $error = json_decode($response, true);
@@ -562,7 +563,7 @@ class IntegrationController extends Controller
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
         if ($httpCode !== 200) {
             return ['success' => false, 'message' => 'Failed to connect to PurgoMalum API'];
@@ -632,97 +633,39 @@ class IntegrationController extends Controller
      */
     public function testTelegram(Request $request)
     {
+        if (!auth()->user()->hasPermission('settings_integrations_telegram.edit')) {
+            abort(403, 'You do not have permission to test Telegram settings.');
+        }
+
+        $validated = $request->validate([
+            'message' => 'nullable|string|max:1000',
+        ]);
+
         try {
-            $request->validate([
-                'message' => 'nullable|string|max:1000',
-            ]);
+            $note = $validated['message']
+                ?: '🔔 Test Connection from ' . company_name() . ' Helpdesk System';
 
-            // Get telegram settings
-            $settings = Setting::getByGroup('integration_telegram');
-            $telegramSettings = $settings['telegram_settings'] ?? [];
-
-            if (empty($telegramSettings['bot_token'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bot API Token not configured. Please save your Telegram settings first.'
-                ]);
-            }
-
-            if (empty($telegramSettings['channel_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Channel ID not configured. Please save your Telegram settings first.'
-                ]);
-            }
-
-            $botToken = $telegramSettings['bot_token'];
-            $channelId = $telegramSettings['channel_id'];
-            $message = $request->input('message', '🔔 Test Connection from ' . company_name() . ' Helpdesk System');
-
-            // Build the message with formatting
-            $formattedMessage = "🔔 *" . company_name() . " Helpdesk*\n\n";
-            $formattedMessage .= "━━━━━━━━━━━━━━━━━━\n";
-            $formattedMessage .= "📋 *Test Connection*\n";
-            $formattedMessage .= "━━━━━━━━━━━━━━━━━━\n\n";
-            $formattedMessage .= "📝 " . $message . "\n\n";
-            $formattedMessage .= "⏰ " . now()->format('d M Y, H:i:s') . "\n";
-            $formattedMessage .= "👤 Sent by: " . auth()->user()->name . "\n\n";
-            $formattedMessage .= "✅ *Connection Successful!*";
-
-            // Send message via Telegram Bot API
-            $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, [
-                'chat_id' => $channelId,
-                'text' => $formattedMessage,
-                'parse_mode' => 'Markdown',
-            ]);
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
-
-            if ($curlError) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Connection failed: ' . $curlError
-                ]);
-            }
-
-            $data = json_decode($response, true);
-
-            if ($httpCode !== 200 || !isset($data['ok']) || !$data['ok']) {
-                $errorMessage = $data['description'] ?? 'Unknown error occurred';
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Telegram API Error: ' . $errorMessage
-                ]);
-            }
+            // Routed through TelegramService so the test exercises exactly the
+            // same transport, timeouts and escaping as real notifications. The
+            // old copy of the cURL logic could pass while notifications failed.
+            $result = TelegramService::sendTestMessage($note);
 
             return response()->json([
-                'success' => true,
-                'message' => 'Message sent successfully to Telegram channel!',
-                'data' => [
-                    'message_id' => $data['result']['message_id'] ?? null,
-                    'chat_id' => $data['result']['chat']['id'] ?? null,
-                    'chat_title' => $data['result']['chat']['title'] ?? 'Private Chat',
-                ]
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'data' => $result['data'],
             ]);
 
-        } catch (\Exception $e) {
-            \Log::error('Telegram test failed: ' . $e->getMessage());
-            
+        } catch (\Throwable $exception) {
+            \Log::error('Telegram test failed unexpectedly', [
+                'exception' => $exception::class,
+                'code' => $exception->getCode(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send test message: ' . $e->getMessage()
-            ]);
+                'message' => 'Failed to send the Telegram test message unexpectedly.',
+            ], 500);
         }
     }
 
@@ -759,7 +702,7 @@ class IntegrationController extends Controller
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch); // curl_close() is deprecated as of PHP 8.5 and a no-op since 8.0.
 
             if ($httpCode !== 200) {
                 $errorData = json_decode($response, true);

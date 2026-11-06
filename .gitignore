@@ -1,10 +1,11 @@
 # Laravel
-*.log
-.env
-.env.backup
-.env.production
+.env*
+!.env.example
 /storage/*.key
 /storage/pail
+/storage/**
+!/storage/**/
+!/storage/**/.gitignore
 /vendor
 /node_modules
 /public/build
@@ -13,6 +14,30 @@
 Homestead.json
 Homestead.yaml
 /auth.json
+
+# Runtime logs
+*.log
+/error_log
+
+# Cache & Compiled
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+# Local agent and generated design artifacts
+/.agents/
+/designs/reports/**/*-preview.png
+/designs/reports/**/*.pdf
+
+# Archives and root server artifacts
+/*.zip
+/*.tar.gz
+/.htaccess-bk
+/.htaccess_bk*
+/public/.htaccess=bk
+/.user.ini
+/php.ini
+/vendor-bk/
+/vendor_old/
 
 # IDE & Editors
 /.cursor
@@ -42,10 +67,6 @@ Thumbs.db
 # Database (SQLite)
 /database/*.sqlite
 /database/*.sqlite-journal
-
-# Cache & Compiled
-/bootstrap/cache/*.php
-!/bootstrap/cache/.gitignore
 
 # NPM/Yarn
 npm-debug.log
